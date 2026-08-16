@@ -16,6 +16,7 @@ export default function VersionHistory({
   onRestore: (base64Data: string) => void
 }) {
   const [versions, setVersions] = useState<VersionSummary[]>([])
+  const [restoringId, setRestoringId] = useState<string | null>(null)
   const apiUrl = process.env.NEXT_PUBLIC_API_URL
   const supabase = createClient()
 
@@ -25,38 +26,70 @@ export default function VersionHistory({
   }
 
   useEffect(() => {
-    getAuthHeader().then((headers) => {
-      fetch(`${apiUrl}/documents/${documentId}/versions`, { headers })
-        .then((res) => res.json())
-        .then(setVersions)
-    })
+    let ignore = false
+    const load = async () => {
+      const headers = await getAuthHeader()
+      const res = await fetch(`${apiUrl}/documents/${documentId}/versions`, { headers })
+      const data = await res.json()
+      if (!ignore) setVersions(data)
+    }
+    load()
+    return () => { ignore = true }
   }, [documentId])
 
   const handleRestore = async (versionId: string) => {
+    setRestoringId(versionId)
     const headers = await getAuthHeader()
     const res = await fetch(`${apiUrl}/documents/${documentId}/versions/${versionId}`, { headers })
     const version = await res.json()
-    console.log('Fetched version for restore:', version)
     const snapshot = version.content_snapshot as { data: string }
     onRestore(snapshot.data)
+    setRestoringId(null)
   }
 
   return (
-    <div className="w-64 border-l p-4">
-      <h2 className="font-semibold mb-3">Version History</h2>
-      <ul className="space-y-2">
+    <div
+      className="rounded-2xl overflow-hidden"
+      style={{ backgroundColor: '#FFFFFF', border: '1px solid #E5E2DA' }}
+    >
+      <div className="px-5 py-4" style={{ borderBottom: '1px solid #E5E2DA' }}>
+        <h2
+          style={{ fontFamily: 'Fraunces, serif', fontWeight: 600, color: '#1B1B1F' }}
+          className="text-sm"
+        >
+          Version history
+        </h2>
+      </div>
+
+      <ul className="p-4 space-y-1">
         {versions.map((v) => (
-          <li key={v.id} className="text-sm flex justify-between items-center">
-            <span>{new Date(v.created_at).toLocaleString()}</span>
+          <li
+            key={v.id}
+            className="flex items-center justify-between rounded-lg px-2 py-2 -mx-2 hover:bg-[#FAFAF8] transition-colors"
+          >
+            <span
+              style={{ fontFamily: 'JetBrains Mono, monospace', color: '#5A5650' }}
+              className="text-xs"
+            >
+              {new Date(v.created_at).toLocaleString([], {
+                month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+              })}
+            </span>
             <button
               onClick={() => handleRestore(v.id)}
-              className="text-blue-600 hover:underline text-xs"
+              disabled={restoringId === v.id}
+              className="text-xs font-medium transition-opacity hover:opacity-70 disabled:opacity-40"
+              style={{ fontFamily: 'Inter, sans-serif', color: '#0EA5A0' }}
             >
-              Restore
+              {restoringId === v.id ? 'Restoring…' : 'Restore'}
             </button>
           </li>
         ))}
-        {versions.length === 0 && <li className="text-gray-400 text-sm">No versions yet</li>}
+        {versions.length === 0 && (
+          <li style={{ fontFamily: 'Inter, sans-serif', color: '#8A8580' }} className="text-xs px-2">
+            No versions yet
+          </li>
+        )}
       </ul>
     </div>
   )
