@@ -159,7 +159,7 @@ export default function LoginPage() {
               ? "Don't have an account? "
               : 'Already have an account? '}
             <span style={{ color: '#5B4EF2', fontWeight: 500 }}>
-              {mode === 'login' ? 'Sign up' : 'Log in'}
+              {mode === 'login' ? 'Sign Up' : 'Log In'}
             </span>
           </button>
         </div>
