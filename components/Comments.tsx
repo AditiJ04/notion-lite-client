@@ -23,6 +23,9 @@ export default function Comments({
 }) {
   const [comments, setComments] = useState<Comment[]>([])
   const [newComment, setNewComment] = useState('')
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [showAll, setShowAll] = useState(false)
   const apiUrl = process.env.NEXT_PUBLIC_API_URL
   const supabase = createClient()
 
@@ -34,16 +37,21 @@ export default function Comments({
   const loadComments = async () => {
     const headers = await getAuthHeader()
     const res = await fetch(`${apiUrl}/documents/${documentId}/comments`, { headers })
-    setComments(await res.json())
+    if (res.ok) setComments(await res.json())
   }
 
   useEffect(() => {
     let ignore = false
     const load = async () => {
+      const { data } = await supabase.auth.getUser()
+      if (data.user && !ignore) setCurrentUserId(data.user.id)
+
       const headers = await getAuthHeader()
       const res = await fetch(`${apiUrl}/documents/${documentId}/comments`, { headers })
-      const data = await res.json()
-      if (!ignore) setComments(data)
+      if (res.ok) {
+        const data = await res.json()
+        if (!ignore) setComments(data)
+      }
     }
     load()
     return () => { ignore = true }
@@ -65,6 +73,18 @@ export default function Comments({
     loadComments()
   }
 
+  const handleDelete = async (commentId: string) => {
+    if (!confirm('Delete this comment?')) return
+    setDeletingId(commentId)
+    const headers = await getAuthHeader()
+    await fetch(`${apiUrl}/documents/${documentId}/comments/${commentId}`, {
+      method: 'DELETE',
+      headers,
+    })
+    setDeletingId(null)
+    loadComments()
+  }
+
   const timeAgo = (iso: string) => {
     // eslint-disable-next-line react-hooks/purity
     const diff = Date.now() - new Date(iso).getTime()
@@ -77,9 +97,9 @@ export default function Comments({
   }
 
   return (
-    <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: '#FFFFFF', border: '1px solid #E5E2DA' }}>
-      <div className="px-5 py-4" style={{ borderBottom: '1px solid #E5E2DA' }}>
-        <h2 style={{ fontFamily: 'Fraunces, serif', fontWeight: 600, color: '#1B1B1F' }} className="text-sm">
+    <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: '#1A1D28', border: '1px solid #2A2E3D' }}>
+      <div className="px-5 py-4" style={{ borderBottom: '1px solid #2A2E3D' }}>
+        <h2 style={{ fontFamily: 'Fraunces, serif', fontWeight: 600, color: '#E4E6F0' }} className="text-sm">
           Comments
         </h2>
       </div>
@@ -88,12 +108,12 @@ export default function Comments({
         {pendingSelection ? (
           <div
             className="mb-3 px-3 py-2 rounded-lg text-xs italic"
-            style={{ fontFamily: 'Inter, sans-serif', backgroundColor: '#FDF3DA', color: '#8A6D1F', borderLeft: '3px solid #F5B942' }}
+            style={{ fontFamily: 'Inter, sans-serif', backgroundColor: 'rgba(255,180,84,0.12)', color: '#FFB454', borderLeft: '3px solid #FFB454' }}
           >
-            &ldquo;{pendingSelection.text}&rdquo;
+            `{pendingSelection.text}`
           </div>
         ) : (
-          <p className="mb-3 text-xs" style={{ fontFamily: 'Inter, sans-serif', color: '#8A8580' }}>
+          <p className="mb-3 text-xs" style={{ fontFamily: 'Inter, sans-serif', color: '#8B8FA3' }}>
             Select text in the document to comment on it.
           </p>
         )}
@@ -106,40 +126,61 @@ export default function Comments({
             placeholder={pendingSelection ? 'Add a comment…' : 'Select text first'}
             disabled={!pendingSelection}
             className="flex-1 rounded-lg px-3 py-2 text-sm outline-none disabled:opacity-50"
-            style={{ fontFamily: 'Inter, sans-serif', border: '1px solid #E5E2DA' }}
+            style={{ fontFamily: 'Inter, sans-serif', border: '1px solid #2A2E3D', backgroundColor: '#12141C', color: '#E4E6F0' }}
           />
           <button
             onClick={handleAddComment}
             disabled={!pendingSelection}
-            className="rounded-lg px-4 text-sm font-medium text-white transition-opacity disabled:opacity-30 hover:opacity-90"
-            style={{ backgroundColor: '#F5B942', fontFamily: 'Inter, sans-serif' }}
+            className="rounded-lg px-4 text-sm font-medium transition-opacity disabled:opacity-30 hover:opacity-90"
+            style={{ backgroundColor: '#FFB454', color: '#12141C', fontFamily: 'Inter, sans-serif' }}
           >
             Add
           </button>
         </div>
 
         <ul className="space-y-3">
-          {comments.map((c) => (
-            <li
-              key={c.id}
-              onClick={() => c.selection && onCommentClick(c.selection.from, c.selection.to)}
-              className="pl-3 py-1 transition-opacity hover:opacity-70"
-              style={{
-                borderLeft: '2px solid #F5B942',
-                cursor: c.selection ? 'pointer' : 'default',
-              }}
-            >
-              <p style={{ fontFamily: 'Inter, sans-serif', color: '#1B1B1F' }} className="text-sm">
-                {c.content}
-              </p>
-              <p style={{ fontFamily: 'JetBrains Mono, monospace', color: '#8A8580' }} className="text-[10px] mt-1">
+          {(showAll ? comments : comments.slice(0, 5)).map((c) => (
+            <li key={c.id} className="pl-3 py-1 group" style={{ borderLeft: '2px solid #FFB454' }}>
+              <div className="flex items-start justify-between gap-2">
+                <p
+                  onClick={() => c.selection && onCommentClick(c.selection.from, c.selection.to)}
+                  className="text-sm flex-1 transition-opacity hover:opacity-70"
+                  style={{ fontFamily: 'Inter, sans-serif', color: '#E4E6F0', cursor: c.selection ? 'pointer' : 'default' }}
+                >
+                  {c.content}
+                </p>
+                {c.user_id === currentUserId && (
+                  <button
+                    onClick={() => handleDelete(c.id)}
+                    disabled={deletingId === c.id}
+                    className="text-xs opacity-0 group-hover:opacity-100 transition-opacity hover:opacity-70 disabled:opacity-40 shrink-0"
+                    style={{ color: '#E8645A' }}
+                  >
+                    {deletingId === c.id ? '…' : '✕'}
+                  </button>
+                )}
+              </div>
+              <p style={{ fontFamily: 'JetBrains Mono, monospace', color: '#8B8FA3' }} className="text-[10px] mt-1">
                 {timeAgo(c.created_at)}
               </p>
             </li>
           ))}
+
           {comments.length === 0 && (
-            <li style={{ fontFamily: 'Inter, sans-serif', color: '#8A8580' }} className="text-xs">
+            <li style={{ fontFamily: 'Inter, sans-serif', color: '#8B8FA3' }} className="text-xs">
               No comments yet
+            </li>
+          )}
+
+          {comments.length > 5 && (
+            <li>
+              <button
+                onClick={() => setShowAll(!showAll)}
+                className="text-xs font-medium"
+                style={{ fontFamily: 'Inter, sans-serif', color: '#6C8EF5' }}
+              >
+                {showAll ? 'Show less' : `Show ${comments.length - 5} more`}
+              </button>
             </li>
           )}
         </ul>

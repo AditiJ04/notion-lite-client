@@ -15,11 +15,16 @@ import RemoteCursors, {
   remoteCursorsPluginKey,
   RemoteCursor,
 } from "./RemoteCursors";
+import Color from "@tiptap/extension-color";
+import { TextStyle } from "@tiptap/extension-text-style";
+import Highlight from "@tiptap/extension-highlight";
+import { Editor } from "@tiptap/react";
 
 export interface CollaborativeEditorHandle {
   restoreVersion: (base64Data: string) => void;
   getSelection: () => { from: number; to: number; text: string } | null;
   focusComment: (from: number, to: number) => void;
+  getEditor: () => Editor | null;
 }
 
 interface Props {
@@ -40,6 +45,9 @@ const CollaborativeEditor = forwardRef<CollaborativeEditorHandle, Props>(
         StarterKit.configure({ undoRedo: false }),
         Collaboration.configure({ document: ydoc }),
         RemoteCursors,
+        TextStyle,
+        Color,
+        Highlight.configure({ multicolor: true }),
       ],
       onSelectionUpdate: ({ editor }) => {
         socketRef.current?.emit("cursor-update", {
@@ -153,12 +161,14 @@ const CollaborativeEditor = forwardRef<CollaborativeEditorHandle, Props>(
           .scrollIntoView()
           .run();
       },
+      getEditor: () => editor,
     }));
 
     return (
       <EditorContent
         editor={editor}
-        className="prose max-w-none p-6 min-h-[70vh] [&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[70vh]"
+        className="prose prose-invert max-w-none p-6 min-h-[70vh] [&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[70vh]"
+        style={{ color: "#E4E6F0" }}
       />
     );
   },
