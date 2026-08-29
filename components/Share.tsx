@@ -15,6 +15,7 @@ export default function Share({ documentId }: { documentId: string }) {
   const [role, setRole] = useState<'editor' | 'viewer'>('editor')
   const [searching, setSearching] = useState(false)
   const [error, setError] = useState('')
+  const [copied, setCopied] = useState(false)
   const apiUrl = process.env.NEXT_PUBLIC_API_URL
   const supabase = createClient()
 
@@ -96,6 +97,25 @@ export default function Share({ documentId }: { documentId: string }) {
     loadCollaborators()
   }
 
+  const handleShareLink = async () => {
+    const url = window.location.href
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Notion-lite document',
+          text: 'Join me on this document',
+          url,
+        })
+      } catch {
+        // user cancelled the share sheet — do nothing
+      }
+    } else {
+      navigator.clipboard.writeText(url)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }
+
   return (
     <div className="relative">
       <button
@@ -120,6 +140,22 @@ export default function Share({ documentId }: { documentId: string }) {
             </div>
 
             <div className="p-4">
+              <button
+                onClick={handleShareLink}
+                className="w-full flex items-center justify-center gap-2 rounded-lg py-2 mb-4 text-sm font-medium transition-opacity hover:opacity-80"
+                style={{ backgroundColor: '#212533', color: '#E4E6F0', fontFamily: 'Inter, sans-serif', border: '1px solid #2A2E3D' }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                {copied ? 'Link copied!' : 'Share document link'}
+              </button>
+
+              <p className="text-xs mb-4 text-center" style={{ fontFamily: 'Inter, sans-serif', color: '#8B8FA3' }}>
+                Anyone with this link can request access
+              </p>
+
               <div className="flex gap-2 mb-2">
                 <input
                   value={email}
