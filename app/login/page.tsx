@@ -82,7 +82,7 @@ export default function LoginPage() {
     <main className="min-h-screen flex items-center justify-center px-6" style={{ backgroundColor: '#12141C' }}>
       <div className="w-full max-w-sm">
         <Link href="/" className="block text-center mb-10" style={{ fontFamily: 'Fraunces, serif', fontWeight: 600, color: '#E4E6F0' }}>
-          <span className="text-2xl">Notion‑lite</span>
+          <span className="text-2xl">Cowrite</span>
         </Link>
 
         <div className="rounded-2xl p-8" style={{ backgroundColor: '#1A1D28', border: '1px solid #2A2E3D' }}>

@@ -102,7 +102,7 @@ export default function Share({ documentId }: { documentId: string }) {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'Notion-lite document',
+          title: 'Cowrite document',
           text: 'Join me on this document',
           url,
         })

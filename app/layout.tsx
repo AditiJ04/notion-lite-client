@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Notion-lite",
+  title: "Cowrite",
   description: "Real-time collaborative notes",
 };
 

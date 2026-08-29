@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import ConfirmDialog from './ConfirmDialog'
 
 interface Comment {
   id: string
@@ -24,6 +25,7 @@ export default function Comments({
   const [comments, setComments] = useState<Comment[]>([])
   const [newComment, setNewComment] = useState('')
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [showAll, setShowAll] = useState(false)
   const apiUrl = process.env.NEXT_PUBLIC_API_URL
@@ -73,15 +75,16 @@ export default function Comments({
     loadComments()
   }
 
-  const handleDelete = async (commentId: string) => {
-    if (!confirm('Delete this comment?')) return
-    setDeletingId(commentId)
+  const confirmDelete = async () => {
+    if (!confirmDeleteId) return
+    setDeletingId(confirmDeleteId)
     const headers = await getAuthHeader()
-    await fetch(`${apiUrl}/documents/${documentId}/comments/${commentId}`, {
+    await fetch(`${apiUrl}/documents/${documentId}/comments/${confirmDeleteId}`, {
       method: 'DELETE',
       headers,
     })
     setDeletingId(null)
+    setConfirmDeleteId(null)
     loadComments()
   }
 
@@ -151,7 +154,7 @@ export default function Comments({
                 </p>
                 {c.user_id === currentUserId && (
                   <button
-                    onClick={() => handleDelete(c.id)}
+                    onClick={() => setConfirmDeleteId(c.id)}
                     disabled={deletingId === c.id}
                     className="text-xs opacity-0 group-hover:opacity-100 transition-opacity hover:opacity-70 disabled:opacity-40 shrink-0"
                     style={{ color: '#E8645A' }}
@@ -185,6 +188,14 @@ export default function Comments({
           )}
         </ul>
       </div>
+
+      <ConfirmDialog
+        open={!!confirmDeleteId}
+        title="Delete this comment?"
+        message="This cannot be undone."
+        onConfirm={confirmDelete}
+        onCancel={() => setConfirmDeleteId(null)}
+      />
     </div>
   )
 }

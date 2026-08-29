@@ -16,7 +16,7 @@ export default function Home() {
 
       <nav className="flex items-center justify-between px-8 py-6 max-w-6xl mx-auto">
         <span style={{ fontFamily: 'Fraunces, serif', fontWeight: 600 }} className="text-xl">
-          Notion‑lite
+          Cowrite
         </span>
         <div className="flex items-center gap-6" style={{ fontFamily: 'Inter, sans-serif' }}>
           <Link href="/login" className="text-sm hover:opacity-70 transition-opacity">

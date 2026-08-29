@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import ConfirmDialog from './ConfirmDialog'
 
 interface VersionSummary {
   id: string
@@ -18,6 +19,7 @@ export default function VersionHistory({
   const [versions, setVersions] = useState<VersionSummary[]>([])
   const [restoringId, setRestoringId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [showAll, setShowAll] = useState(false)
   const apiUrl = process.env.NEXT_PUBLIC_API_URL
   const supabase = createClient()
@@ -57,15 +59,16 @@ export default function VersionHistory({
     setRestoringId(null)
   }
 
-  const handleDelete = async (versionId: string) => {
-    if (!confirm('Delete this version? This cannot be undone.')) return
-    setDeletingId(versionId)
+  const confirmDelete = async () => {
+    if (!confirmDeleteId) return
+    setDeletingId(confirmDeleteId)
     const headers = await getAuthHeader()
-    await fetch(`${apiUrl}/documents/${documentId}/versions/${versionId}`, {
+    await fetch(`${apiUrl}/documents/${documentId}/versions/${confirmDeleteId}`, {
       method: 'DELETE',
       headers,
     })
     setDeletingId(null)
+    setConfirmDeleteId(null)
     loadVersions()
   }
 
@@ -98,7 +101,7 @@ export default function VersionHistory({
                 {restoringId === v.id ? 'Restoring…' : 'Restore'}
               </button>
               <button
-                onClick={() => handleDelete(v.id)}
+                onClick={() => setConfirmDeleteId(v.id)}
                 disabled={deletingId === v.id}
                 className="text-xs opacity-0 group-hover:opacity-100 transition-opacity hover:opacity-70 disabled:opacity-40"
                 style={{ fontFamily: 'Inter, sans-serif', color: '#E8645A' }}
@@ -127,6 +130,14 @@ export default function VersionHistory({
           </li>
         )}
       </ul>
+
+      <ConfirmDialog
+        open={!!confirmDeleteId}
+        title="Delete this version?"
+        message="This cannot be undone."
+        onConfirm={confirmDelete}
+        onCancel={() => setConfirmDeleteId(null)}
+      />
     </div>
   )
 }

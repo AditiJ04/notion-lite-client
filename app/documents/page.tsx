@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import ConfirmDialog from '@/components/ConfirmDialog'
 
 interface Document {
   id: string
@@ -16,6 +17,7 @@ export default function DocumentsPage() {
   const [creating, setCreating] = useState(false)
   const [loading, setLoading] = useState(true)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const supabase = createClient()
   const router = useRouter()
   const apiUrl = process.env.NEXT_PUBLIC_API_URL
@@ -61,14 +63,19 @@ export default function DocumentsPage() {
     router.push(`/documents/${doc.id}`)
   }
 
-  const handleDelete = async (e: React.MouseEvent, docId: string) => {
+  const handleDelete = (e: React.MouseEvent, docId: string) => {
     e.preventDefault()
     e.stopPropagation()
-    if (!confirm('Delete this document? This cannot be undone.')) return
-    setDeletingId(docId)
+    setConfirmDeleteId(docId)
+  }
+
+  const confirmDelete = async () => {
+    if (!confirmDeleteId) return
+    setDeletingId(confirmDeleteId)
     const headers = await getAuthHeader()
-    await fetch(`${apiUrl}/documents/${docId}`, { method: 'DELETE', headers })
+    await fetch(`${apiUrl}/documents/${confirmDeleteId}`, { method: 'DELETE', headers })
     setDeletingId(null)
+    setConfirmDeleteId(null)
     loadDocuments()
   }
 
@@ -90,7 +97,7 @@ export default function DocumentsPage() {
     <main className="min-h-screen" style={{ backgroundColor: '#12141C' }}>
       <nav className="flex items-center justify-between px-8 py-6 max-w-4xl mx-auto">
         <Link href="/" style={{ fontFamily: 'Fraunces, serif', fontWeight: 600, color: '#E4E6F0' }} className="text-xl">
-          Notion‑lite
+          Cowrite
         </Link>
         <div className="flex items-center gap-4">
           <span style={{ fontFamily: 'JetBrains Mono, monospace', color: '#8B8FA3' }} className="text-xs">
@@ -175,6 +182,14 @@ export default function DocumentsPage() {
           </ul>
         )}
       </div>
+
+      <ConfirmDialog
+        open={!!confirmDeleteId}
+        title="Delete this document?"
+        message="This cannot be undone."
+        onConfirm={confirmDelete}
+        onCancel={() => setConfirmDeleteId(null)}
+      />
     </main>
   )
 }

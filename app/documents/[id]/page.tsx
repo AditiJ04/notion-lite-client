@@ -10,6 +10,7 @@ import VersionHistory from '@/components/VersionHistory'
 import Comments from '@/components/Comments'
 import Share from '@/components/Share'
 import RequestAccessScreen from '@/components/RequestAccessScreen'
+import ConfirmDialog from '@/components/ConfirmDialog'
 
 export default function DocumentPage() {
   const { id } = useParams<{ id: string }>()
@@ -20,6 +21,7 @@ export default function DocumentPage() {
   const [checkingAccess, setCheckingAccess] = useState(true)
   const [accessDenied, setAccessDenied] = useState(false)
   const [pendingSelection, setPendingSelection] = useState<{ from: number; to: number; text: string } | null>(null)
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
   const editorRef = useRef<CollaborativeEditorHandle>(null)
   const supabase = createClient()
   const apiUrl = process.env.NEXT_PUBLIC_API_URL
@@ -88,8 +90,7 @@ export default function DocumentPage() {
     })
   }
 
-  const handleDelete = async () => {
-    if (!confirm('Delete this document? This cannot be undone.')) return
+  const confirmDelete = async () => {
     const headers = await getAuthHeader()
     await fetch(`${apiUrl}/documents/${id}`, { method: 'DELETE', headers })
     router.push('/documents')
@@ -132,7 +133,7 @@ export default function DocumentPage() {
             💬 Comment on selection
           </button>
           <button
-            onClick={handleDelete}
+            onClick={() => setConfirmDeleteOpen(true)}
             className="text-xs font-medium transition-opacity hover:opacity-70"
             style={{ fontFamily: 'Inter, sans-serif', color: '#E8645A' }}
           >
@@ -172,6 +173,14 @@ export default function DocumentPage() {
           <VersionHistory documentId={id} onRestore={handleRestore} />
         </div>
       </div>
+
+      <ConfirmDialog
+        open={confirmDeleteOpen}
+        title="Delete this document?"
+        message="This cannot be undone."
+        onConfirm={confirmDelete}
+        onCancel={() => setConfirmDeleteOpen(false)}
+      />
     </main>
   )
 }
