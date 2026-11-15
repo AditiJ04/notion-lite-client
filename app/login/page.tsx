@@ -8,7 +8,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [mode, setMode] = useState<'login' | 'signup'>('login')
+  const [mode, setMode] = useState<'login' | 'signup' | 'forgot'>('login')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [confirmSent, setConfirmSent] = useState(false)
@@ -32,6 +32,19 @@ export default function LoginPage() {
     }
 
     setLoading(true)
+
+    if (mode === 'forgot') {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      })
+      setLoading(false)
+      if (error) {
+        setError(error.message)
+        return
+      }
+      setConfirmSent(true)
+      return
+    }
 
     if (mode === 'login') {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
@@ -64,7 +77,9 @@ export default function LoginPage() {
             Check your email
           </p>
           <p style={{ fontFamily: 'Inter, sans-serif', color: '#8B8FA3' }} className="text-sm mb-6">
-            We sent a confirmation link to <strong>{email}</strong>. Click it to activate your account, then come back and log in.
+            {mode === 'forgot'
+              ? <>If an account exists for <strong>{email}</strong>, we sent a password reset link. Check your inbox and spam folder.</>
+              : <>We sent a confirmation link to <strong>{email}</strong>. Click it to activate your account, then come back and log in.</>}
           </p>
           <button
             onClick={() => { setConfirmSent(false); setMode('login') }}
@@ -87,10 +102,14 @@ export default function LoginPage() {
 
         <div className="rounded-2xl p-8" style={{ backgroundColor: '#1A1D28', border: '1px solid #2A2E3D' }}>
           <h1 style={{ fontFamily: 'Fraunces, serif', fontWeight: 600, color: '#E4E6F0' }} className="text-2xl mb-1">
-            {mode === 'login' ? 'Welcome back' : 'Create your account'}
+            {mode === 'login' ? 'Welcome back' : mode === 'signup' ? 'Create your account' : 'Reset your password'}
           </h1>
           <p style={{ fontFamily: 'Inter, sans-serif', color: '#8B8FA3' }} className="text-sm mb-6">
-            {mode === 'login' ? 'Log in to keep writing.' : 'Start collaborating in seconds.'}
+            {mode === 'login'
+              ? 'Log in to keep writing.'
+              : mode === 'signup'
+                ? 'Start collaborating in seconds.'
+                : 'Enter your email and we will send you a secure reset link.'}
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -110,7 +129,18 @@ export default function LoginPage() {
               />
             </div>
 
-            <div>
+            {mode === 'login' && (
+              <button
+                type="button"
+                onClick={() => { setMode('forgot'); setError(''); setPassword('') }}
+                className="block ml-auto text-xs font-medium"
+                style={{ fontFamily: 'Inter, sans-serif', color: '#6C8EF5' }}
+              >
+                Forgot password?
+              </button>
+            )}
+
+            {mode !== 'forgot' && <div>
               <label htmlFor="password" className="block text-xs mb-1.5" style={{ fontFamily: 'Inter, sans-serif', color: '#8B8FA3' }}>
                 Password
               </label>
@@ -149,7 +179,7 @@ export default function LoginPage() {
                   ))}
                 </ul>
               )}
-            </div>
+            </div>}
 
             {error && (
               <p
@@ -166,19 +196,32 @@ export default function LoginPage() {
               className="w-full rounded-lg py-2.5 text-sm font-medium transition-opacity disabled:opacity-50"
               style={{ backgroundColor: '#6C8EF5', color: '#12141C', fontFamily: 'Inter, sans-serif' }}
             >
-              {loading ? (mode === 'login' ? 'Logging in…' : 'Creating account…') : (mode === 'login' ? 'Log in' : 'Sign up')}
+              {loading
+                ? mode === 'login' ? 'Logging in…' : mode === 'signup' ? 'Creating account…' : 'Sending reset link…'
+                : mode === 'login' ? 'Log in' : mode === 'signup' ? 'Sign up' : 'Send reset link'}
             </button>
           </form>
 
-          <button
-            type="button"
-            onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setError('') }}
-            className="w-full text-center text-xs mt-5"
-            style={{ fontFamily: 'Inter, sans-serif', color: '#8B8FA3' }}
-          >
-            {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
-            <span style={{ color: '#6C8EF5', fontWeight: 500 }}>{mode === 'login' ? 'Sign up' : 'Log in'}</span>
-          </button>
+          {mode === 'forgot' ? (
+            <button
+              type="button"
+              onClick={() => { setMode('login'); setError('') }}
+              className="w-full text-center text-xs mt-5"
+              style={{ fontFamily: 'Inter, sans-serif', color: '#6C8EF5' }}
+            >
+              Back to login
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setError('') }}
+              className="w-full text-center text-xs mt-5"
+              style={{ fontFamily: 'Inter, sans-serif', color: '#8B8FA3' }}
+            >
+              {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
+              <span style={{ color: '#6C8EF5', fontWeight: 500 }}>{mode === 'login' ? 'Sign up' : 'Log in'}</span>
+            </button>
+          )}
         </div>
       </div>
     </main>
