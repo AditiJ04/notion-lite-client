@@ -5,6 +5,7 @@ import Link from 'next/link'
 
 export default function RequestAccessScreen({ documentId }: { documentId: string }) {
   const [status, setStatus] = useState<'idle' | 'pending' | 'sending'>('idle')
+  const [error, setError] = useState('')
   const supabase = createClient()
   const apiUrl = process.env.NEXT_PUBLIC_API_URL
 
@@ -26,12 +27,20 @@ export default function RequestAccessScreen({ documentId }: { documentId: string
   }, [documentId])
 
   const handleRequest = async () => {
+    setError('')
     setStatus('sending')
     const headers = await getAuthHeader()
-    await fetch(`${apiUrl}/documents/${documentId}/request-access`, {
+    const res = await fetch(`${apiUrl}/documents/${documentId}/request-access`, {
       method: 'POST',
       headers,
     })
+
+    if (!res.ok) {
+      setStatus('idle')
+      setError('Could not send your request. Please try again.')
+      return
+    }
+
     setStatus('pending')
   }
 
@@ -44,7 +53,7 @@ export default function RequestAccessScreen({ documentId }: { documentId: string
               Request sent
             </p>
             <p style={{ fontFamily: 'Inter, sans-serif', color: '#8A8580' }} className="text-sm mb-6">
-              The owner has been notified. You&apos;ll get access once they approve your request.
+              Your request is waiting for the owner to approve it.
             </p>
           </>
         ) : (
@@ -63,6 +72,11 @@ export default function RequestAccessScreen({ documentId }: { documentId: string
             >
               {status === 'sending' ? 'Sending…' : 'Request access'}
             </button>
+            {error && (
+              <p className="text-xs mt-3" style={{ color: '#E8645A', fontFamily: 'Inter, sans-serif' }}>
+                {error}
+              </p>
+            )}
           </>
         )}
         <div className="mt-6">

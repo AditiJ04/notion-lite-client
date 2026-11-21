@@ -8,14 +8,22 @@ interface Collaborator {
   users: { id: string; name: string; email: string }
 }
 
+interface AccessRequest {
+  id: string
+  status: string
+  users: { id: string; name: string; email: string }
+}
+
 export default function Share({ documentId }: { documentId: string }) {
   const [open, setOpen] = useState(false)
   const [collaborators, setCollaborators] = useState<Collaborator[]>([])
+  const [accessRequests, setAccessRequests] = useState<AccessRequest[]>([])
   const [email, setEmail] = useState('')
   const [role, setRole] = useState<'editor' | 'viewer'>('editor')
   const [searching, setSearching] = useState(false)
   const [error, setError] = useState('')
   const [copied, setCopied] = useState(false)
+  const [processingRequestId, setProcessingRequestId] = useState<string | null>(null)
   const apiUrl = process.env.NEXT_PUBLIC_API_URL
   const supabase = createClient()
 
@@ -30,13 +38,25 @@ export default function Share({ documentId }: { documentId: string }) {
     if (res.ok) setCollaborators(await res.json())
   }
 
+  const loadAccessRequests = async () => {
+    const headers = await getAuthHeader()
+    const res = await fetch(`${apiUrl}/documents/${documentId}/access-requests`, { headers })
+    if (res.ok) setAccessRequests(await res.json())
+  }
+
   useEffect(() => {
     if (!open) return
     let ignore = false
     const load = async () => {
       const headers = await getAuthHeader()
-      const res = await fetch(`${apiUrl}/documents/${documentId}/collaborators`, { headers })
-      if (res.ok && !ignore) setCollaborators(await res.json())
+      const [collaboratorsResponse, requestsResponse] = await Promise.all([
+        fetch(`${apiUrl}/documents/${documentId}/collaborators`, { headers }),
+        fetch(`${apiUrl}/documents/${documentId}/access-requests`, { headers }),
+      ])
+
+      if (ignore) return
+      if (collaboratorsResponse.ok) setCollaborators(await collaboratorsResponse.json())
+      if (requestsResponse.ok) setAccessRequests(await requestsResponse.json())
     }
     load()
     return () => { ignore = true }
@@ -95,6 +115,24 @@ export default function Share({ documentId }: { documentId: string }) {
       headers,
     })
     loadCollaborators()
+  }
+
+  const handleAccessRequest = async (requestId: string, action: 'approve' | 'deny') => {
+    setError('')
+    setProcessingRequestId(requestId)
+    const headers = await getAuthHeader()
+    const res = await fetch(
+      `${apiUrl}/documents/${documentId}/access-requests/${requestId}/${action}`,
+      { method: 'POST', headers },
+    )
+    setProcessingRequestId(null)
+
+    if (!res.ok) {
+      setError(`Could not ${action} this access request`)
+      return
+    }
+
+    await Promise.all([loadAccessRequests(), loadCollaborators()])
   }
 
   const handleShareLink = async () => {
@@ -189,6 +227,46 @@ export default function Share({ documentId }: { documentId: string }) {
                 <p className="text-xs mt-2" style={{ fontFamily: 'Inter, sans-serif', color: '#E8645A' }}>
                   {error}
                 </p>
+              )}
+
+              {accessRequests.length > 0 && (
+                <div className="mt-4 pt-4" style={{ borderTop: '1px solid #2A2E3D' }}>
+                  <p className="text-xs mb-2" style={{ fontFamily: 'Inter, sans-serif', color: '#8B8FA3' }}>
+                    Pending requests
+                  </p>
+                  <ul className="space-y-3">
+                    {accessRequests.map((request) => {
+                      const processing = processingRequestId === request.id
+                      return (
+                        <li key={request.id}>
+                          <p className="text-sm truncate mb-2" style={{ fontFamily: 'Inter, sans-serif', color: '#E4E6F0' }}>
+                            {request.users.email}
+                          </p>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleAccessRequest(request.id, 'approve')}
+                              disabled={processing}
+                              className="flex-1 rounded-lg py-1.5 text-xs font-medium disabled:opacity-40"
+                              style={{ backgroundColor: '#4ECDC4', color: '#12141C' }}
+                            >
+                              {processing ? 'Working…' : 'Approve'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleAccessRequest(request.id, 'deny')}
+                              disabled={processing}
+                              className="flex-1 rounded-lg py-1.5 text-xs font-medium disabled:opacity-40"
+                              style={{ backgroundColor: 'rgba(232,100,90,0.12)', color: '#E8645A' }}
+                            >
+                              Deny
+                            </button>
+                          </div>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </div>
               )}
 
               <div className="mt-4 pt-4" style={{ borderTop: '1px solid #2A2E3D' }}>
